@@ -5,7 +5,7 @@ clear
 clc
 
 %% Parameters
-D = 1; % disutility
+D = 0.9; % disutility
 Ay = 7; % productivity of good Y
 As = 1; % productivity of short haul
 Al = 1; % productivity of long haul
