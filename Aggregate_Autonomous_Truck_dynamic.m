@@ -6,7 +6,7 @@ clc
 
 %% Parameters
 D = 0.9; % disutility
-Ay = 7; % productivity of good Y
+Ay = 3; % productivity of good Y
 As = 1; % productivity of short haul
 Al = 1; % productivity of long haul
 alpha = 0.5; % the share of Y
@@ -31,88 +31,95 @@ U = zeros(1,length(beta_range));
 EXITFLAG = zeros(1,length(beta_range));
 FVAL = zeros(1,length(beta_range));
 
-function F = AT(x_log, params)
-    x = exp(x_log);  % Log-to-level transformation
-    % Unpack variables
-    W = x(1:3); 
-    % W(1): Wage in producing Y
-    % W(2): Wage in local transportation
-    % W(3): Wage in interstate transportation
 
-    L = x(4:6); % Labor allocations
-    % L(1): Labor allocated to the good sector
-    % L(2): Labor allocated to the local transportation sector 
-    % L(3): Labor allocated to the interstate transportation sector
+function F = AT(x_log, params, W1)
+  x = exp(x_log);  % Log-to-level transformation
+  % Unpack variables
+  W = [W1; x(1:2)]; 
+  % W(1): Wage in producing Y (fixed)
+  % W(2): Wage in local transportation
+  % W(3): Wage in interstate transportation
 
-    K = x(7); % Autonomous Trucks
+  L = x(3:5); % Labor allocations
+  % L(1): Labor allocated to the good sector
+  % L(2): Labor allocated to the local transportation sector 
+  % L(3): Labor allocated to the interstate transportation sector
 
-    C = x(8); % Consumption
+  K = x(6); % Autonomous Trucks
 
-    % Unpack parameters
-    D = params.D;
-    Ay = params.Ay;
-    As = params.As;
-    Al = params.Al;
-    alpha = params.alpha;
-    delta = params.delta;
-    L_bar = params.L_bar;
-    Pk = params.Pk;
-    beta = params.beta;
+  C = x(7); % Consumption
 
-    % Equations
-    F(1) = W(3) - C * D;
-    F(2) = C - ((Ay * L(1)) ^ alpha * (min(As * L(2), Al * K ^ beta * L(3) ^ (1 - beta))) ^ (1 - alpha) - delta * K);
-    F(3) = W(3) * L(3) - (1 - alpha) * (1 - beta) * (Ay * L(1)) ^ alpha * (min(As * L(2), Al * K ^ beta * L(3) ^ (1 - beta))) ^ (1 - alpha);
-    F(4) = W(2) * L(2) - (1 - alpha) * (Ay * L(1)) ^ alpha * (min(As * L(2), Al * K ^ beta * L(3) ^ (1 - beta))) ^ (1 - alpha);
-    F(5) = W(1) * L(1) - alpha * (Ay * L(1)) ^ alpha * (min(As * L(2), Al * K ^ beta * L(3) ^ (1 - beta))) ^ (1 - alpha);
-    F(6) = W(1) - W(2);
-    F(7) = Pk * K - (1 - alpha) * beta * (Ay * L(1)) ^ alpha * (min(As * L(2), Al * K ^ beta * L(3) ^ (1 - beta))) ^ (1 - alpha);
-    F(8) = L(1) + L(2) + L(3) - L_bar;
+  % Unpack parameters
+  D = params.D;
+  Ay = params.Ay;
+  As = params.As;
+  Al = params.Al;
+  alpha = params.alpha;
+  delta = params.delta;
+  L_bar = params.L_bar;
+  Pk = params.Pk;
+  beta = params.beta;
+
+  % Equations (labor market clearance removed)
+  F(1) = W(3) - C * D;
+  F(2) = C - ((Ay * L(1)) ^ alpha * (min(As * L(2), Al * K ^ beta * L(3) ^ (1 - beta))) ^ (1 - alpha) - delta * K);
+  F(3) = W(3) * L(3) - (1 - alpha) * (1 - beta) * (Ay * L(1)) ^ alpha * (min(As * L(2), Al * K ^ beta * L(3) ^ (1 - beta))) ^ (1 - alpha);
+  F(4) = W(2) * L(2) - (1 - alpha) * (Ay * L(1)) ^ alpha * (min(As * L(2), Al * K ^ beta * L(3) ^ (1 - beta))) ^ (1 - alpha);
+  F(5) = W(1) * L(1) - alpha * (Ay * L(1)) ^ alpha * (min(As * L(2), Al * K ^ beta * L(3) ^ (1 - beta))) ^ (1 - alpha);
+  F(6) = W(1) - W(2);
+  F(7) = Pk * K - (1 - alpha) * beta * (Ay * L(1)) ^ alpha * (min(As * L(2), Al * K ^ beta * L(3) ^ (1 - beta))) ^ (1 - alpha);
 end
 
+
 for i = 1:length(beta_range)
-        
-        % set parameter
-        params.D = D;
-        params.Ay = Ay;
-        params.As = As;
-        params.Al = Al;
-        params.alpha = alpha;
-        params.delta = delta;
-        params.L_bar = L_bar;
-        params.Pk = Pk;
-        params.beta = beta_range(i);
+  % set parameter
+  params.D = D;
+  params.Ay = Ay;
+  params.As = As;
+  params.Al = Al;
+  params.alpha = alpha;
+  params.delta = delta;
+  params.L_bar = L_bar;
+  params.Pk = Pk;
+  params.beta = beta_range(i);
 
-        % Initial guesses for the variables
-        x0 = log([1 * ones(3, 1); % Wage
-          1 * ones(3, 1); % Labor allocation
-          1; % Capital
-          1]); % Consumption
-        % Solve the system of equations
-        options = optimoptions('fsolve', ...
-        'Display', 'iter', ...
-        'TolFun', 1e-16, ...
-        'TolX', 1e-16, ...
-        'MaxIterations', 10000, ...
-        'MaxFunctionEvaluations', 50000);
-        [x_sol, fval, exitflag] = fsolve(@(x) AT(x, params), x0, options);
-        x = exp(x_sol);
-
-        % Store the solution
-        Wy(i) = x(1);
-        Ws(i) = x(2);
-        Wl(i) = x(3);
-        Ly(i) = x(4);
-        Ls(i) = x(5);
-        Ll(i) = x(6);
-        K(i) = x(7);
-        C(i) = x(8);
-        Q(i) = (Ay * x(4)) ^ alpha * (min(As * x(5), Al * x(7) ^ beta_range(i) * x(6) ^ (1 - beta_range(i)))) ^ (1 - alpha);
-        U(i) = ((1 - gamma) / gamma) * (log(C(i)) - Ll(i) * D); 
-
-        % exitflag
-        EXITFLAG(i) = exitflag;
-        FVAL(i) = norm(fval);
+  % Initial guess for wage (W1)
+  W1 = 1;
+  tol = 1e-6;
+  max_iter = 50;
+  iter = 0;
+  excess = 1;
+  while abs(excess) > tol && iter < max_iter
+    % Initial guesses for the remaining variables
+    x0 = log([1; 1; 1; 1; 1; 1; 1]); % [W2, W3, L1, L2, L3, K, C]
+    options = optimoptions('fsolve', ...
+      'Display', 'off', ...
+      'TolFun', 1e-10, ...
+      'TolX', 1e-10, ...
+      'MaxIterations', 1000, ...
+      'MaxFunctionEvaluations', 5000);
+    [x_sol, fval, exitflag] = fsolve(@(x) AT(x, params, W1), x0, options);
+    x = exp(x_sol);
+    W2 = x(1); W3 = x(2);
+    L1 = x(3); L2 = x(4); L3 = x(5);
+    Kval = x(6); Cval = x(7);
+    excess = (L1 + L2 + L3) - L_bar;
+    % Adjust W1 based on excess demand/supply
+    W1 = W1 * (1 + 0.5 * excess / L_bar);
+    iter = iter + 1;
+  end
+  Wy(i) = W1;
+  Ws(i) = W2;
+  Wl(i) = W3;
+  Ly(i) = L1;
+  Ls(i) = L2;
+  Ll(i) = L3;
+  K(i) = Kval;
+  C(i) = Cval;
+  Q(i) = (Ay * L1) ^ alpha * (min(As * L2, Al * Kval ^ beta_range(i) * L3 ^ (1 - beta_range(i)))) ^ (1 - alpha);
+  U(i) = ((1 - gamma) / gamma) * (log(C(i)) - Ll(i) * D);
+  EXITFLAG(i) = exitflag;
+  FVAL(i) = norm(fval);
 end
 
 
